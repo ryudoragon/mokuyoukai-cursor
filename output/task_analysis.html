@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日報タスク分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            font-weight: 400;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .unit {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .task-list {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .task-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-item h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .task-item .date {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .task-item .time {
+            color: #764ba2;
+            font-weight: bold;
+        }
+
+        .goals-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .goal-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .goal-card .date {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .goal-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .goal-card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .goal-card li:last-child {
+            border-bottom: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 日報タスク分析</h1>
+        <p class="subtitle">作業時間とタスクの可視化</p>
+
+        <div id="loading" class="loading">
+            <p>日報データを読み込んでいます...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <!-- 統計カード -->
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <!-- 日別作業時間推移 -->
+            <div class="section">
+                <h2 class="section-title">📈 日別作業時間推移</h2>
+                <div class="chart-container">
+                    <canvas id="dailyTimeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- カテゴリ別作業時間 -->
+            <div class="section">
+                <h2 class="section-title">🥧 カテゴリ別作業時間</h2>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- タスク一覧 -->
+            <div class="section">
+                <h2 class="section-title">📋 タスク一覧</h2>
+                <div id="taskList" class="task-list"></div>
+            </div>
+
+            <!-- 目標一覧 -->
+            <div class="section">
+                <h2 class="section-title">🎯 今日の目標</h2>
+                <div id="goalsList" class="goals-section"></div>
+            </div>
+        </div>
+
+        <div id="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        // 日報データを格納する配列
+        let dailyReports = [];
+        let dailyTimeChart = null;
+        let categoryChart = null;
+
+        // 時間文字列を数値（時間）に変換
+        function parseTime(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return 0;
+            
+            let hours = 0;
+            // "1.5時間" や "1時間" のパターン
+            const hourMatch = timeStr.match(/(\d+(?:\.\d+)?)\s*時間/);
+            // "30分" のパターン
+            const minuteMatch = timeStr.match(/(\d+)\s*分/);
+            
+            if (hourMatch) {
+                hours += parseFloat(hourMatch[1]);
+            }
+            if (minuteMatch) {
+                hours += parseInt(minuteMatch[1]) / 60;
+            }
+            
+            return hours;
+        }
+
+        // Markdownファイルを解析
+        function parseMarkdown(content) {
+            const report = {
+                date: null,
+                goals: [],
+                tasks: [],
+                totalTime: 0
+            };
+
+            try {
+                // 日付を抽出
+                const dateMatch = content.match(/\*\*日付\*\*:\s*(\d{4}-\d{2}-\d{2})/);
+                if (dateMatch) {
+                    report.date = dateMatch[1];
+                }
+
+                // 今日の目標を抽出
+                const goalsSection = content.match(/##\s*今日の目標\s*\n([\s\S]*?)(?=\n##|$)/);
+                if (goalsSection) {
+                    const goals = goalsSection[1].match(/^-\s*(.+)$/gm);
+                    if (goals) {
+                        report.goals = goals.map(g => g.replace(/^-\s*/, '').trim()).filter(g => g);
+                    }
+                }
+
+                // 作業時間テーブルを抽出
+                const tableMatch = content.match(/##\s*作業時間（工数）\s*\n([\s\S]*?)(?=\n##|$)/);
+                if (tableMatch) {
+                    const tableContent = tableMatch[1];
+                    // テーブル行を抽出（ヘッダーと区切り線を除く）
+                    const lines = tableContent.split('\n');
+                    
+                    lines.forEach((line) => {
+                        // ヘッダー行や区切り線をスキップ
+                        if (!line.trim() || line.includes('---') || line.includes('作業内容')) {
+                            return;
+                        }
+                        
+                        // パイプで区切られたセルを抽出
+                        const cells = line.split('|').map(c => c.trim()).filter(c => c);
+                        if (cells.length >= 2) {
+                            const taskName = cells[0];
+                            const timeStr = cells[1];
+                            const note = cells[2] || '';
+                            const hours = parseTime(timeStr);
+                            
+                            if (taskName && hours > 0) {
+                                report.tasks.push({
+                                    name: taskName,
+                                    time: hours,
+                                    note: note
+                                });
+                                report.totalTime += hours;
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error parsing markdown:', error);
+            }
+
+            return report;
+        }
+
+        // 日報データ（直接埋め込み）
+        const reportData = {
+            '2025-11-03': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-03
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- 週明けのタスク整理と優先順位付け
+- クライアント案件の進捗確認
+
+## 業務内容
+
+### 午前
+- 週明けのデイリースタンドアップに参加し、今週の目標と各メンバーのタスクを確認した
+- 先週末からのメールとSlackの未読メッセージを整理し、緊急度の高い案件をピックアップした
+- クライアント案件の進捗状況を確認し、今週中に完了すべきタスクをリストアップした
+- 月次レポートのデータ収集を開始し、必要な数値を各部署から収集する依頼を送付した
+
+### 午後
+- 新規プロジェクトのキックオフミーティングに参加し、プロジェクトの全体像とスケジュールを確認した
+- 提案スライドの初稿を作成し、基本的な構成と主要なポイントをまとめた
+- 既存顧客からの問い合わせに対応し、サービス利用状況の確認とサポートを実施した
+- 来週開催予定のセミナーの企画書を作成し、開催内容と予算案をまとめた
+- 終業前に今週のスケジュールを再確認し、重要な会議の準備を開始した
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| デイリースタンドアップ | 30分 |      |
+| メール・Slack整理 | 1時間 |      |
+| クライアント案件確認 | 1時間 |      |
+| 月次レポートデータ収集 | 1時間 |      |
+| キックオフミーティング | 1.5時間 |      |
+| 提案スライド作成 | 2時間 |      |
+| 顧客対応 | 30分 |      |
+| セミナー企画書作成 | 1.5時間 |      |`,
+            '2025-11-04': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-04
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- 提案スライドのレビュー依頼
+- セミナー会場の候補調査
+
+## 業務内容
+
+### 午前
+- デイリースタンドアップで昨日の進捗を報告し、今日のタスクを共有した
+- 提案スライドに市場データとグラフを追加し、より説得力のある内容に仕上げた
+- 上司にレビュー依頼を送付し、フィードバックを待つ状態にした
+- セミナー会場の候補を3つリストアップし、それぞれの基本情報を調査した
+
+### 午後
+- セミナー会場の候補先に問い合わせを行い、空き状況と料金の見積もりを依頼した
+- 広告キャンペーンの企画会議に参加し、ターゲット設定と訴求ポイントを議論した
+- 既存のマーケティング資料を更新し、最新の数値と事例を反映した
+- 開発チームとの定例ミーティングに参加し、進行中の機能開発の進捗を確認した
+- 顧客からのフィードバックを分析し、改善点をまとめて関係部署に共有した
+- 終業前に明日の準備として、必要な資料を確認し、会議のアジェンダを整理した
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| デイリースタンドアップ | 30分 |      |
+| 提案スライド追加作業 | 2時間 |      |
+| セミナー会場調査 | 1.5時間 |      |
+| 会場問い合わせ | 30分 |      |
+| 広告キャンペーン企画会議 | 1.5時間 |      |
+| マーケティング資料更新 | 1.5時間 |      |
+| 開発チーム定例 | 1時間 |      |
+| 顧客フィードバック分析 | 1時間 |      |`,
+            '2025-11-05': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-05
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- 会場見積もりの確認
+- 広告クリエイティブの方向性検討
+
+## 業務内容
+
+### 午前
+- デイリースタンドアップでチーム全体の進捗を確認し、ブロッカーがないか確認した
+- セミナー会場から届いた見積もりを比較検討し、コストパフォーマンスを分析した
+- 広告クリエイティブの方向性について、ターゲット層のペルソナを再確認した
+- 提案スライドのフィードバックを受けて、修正点をリストアップし、優先順位を付けた
+
+### 午後
+- 提案スライドの修正作業を実施し、指摘された点を反映させた
+- 広告クリエイティブのラフ案を2案作成し、それぞれのコンセプトをまとめた
+- 動画編集チームと打ち合わせを行い、進行中のプロジェクトの進捗と課題を確認した
+- 新規顧客との商談の日程調整を行い、来週のミーティングを確定した
+- 社内のツール改善提案をまとめ、効率化のポイントを整理した
+- 終業前に週末までのタスクを確認し、優先度の高い作業を洗い出した
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| デイリースタンドアップ | 30分 |      |
+| 会場見積もり比較 | 1時間 |      |
+| 広告クリエイティブ方向性検討 | 1.5時間 |      |
+| 提案スライド修正 | 2時間 |      |
+| 広告クリエイティブラフ作成 | 2時間 |      |
+| 動画編集チーム打ち合わせ | 1時間 |      |
+| 商談日程調整 | 30分 |      |
+| ツール改善提案作成 | 1.5時間 |      |`,
+            '2025-11-06': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-06
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- 広告クリエイティブ案の社内レビュー
+- Cursor講座の資料準備
+
+## 業務内容
+
+### 午前
+- デイリースタンドアップで週末に向けたタスクの確認を行った
+- 広告クリエイティブ案を完成させ、社内レビュー用の資料を準備した
+- 社内でクリエイティブ案のレビュー会議を開催し、各案の評価と改善点を議論した
+- Cursor講座の資料作成を開始し、基本的な構成とスライドの骨組みを作成した
+
+### 午後
+- Cursor講座の資料をさらに作り込み、ハンズオンで使用するサンプルコードを準備した
+- セミナー会場の最終候補を上司に報告し、承認を得た
+- 来週の新規顧客商談に向けて、事前準備として顧客情報と過去の類似案件を調査した
+- 開発チームから上がってきたバグ報告を確認し、緊急度の高いものから対応を開始した
+- 月次レポートのデータが揃ったので、分析を開始し、グラフとコメントを追加した
+- 終業前に明日のCursor講座の最終準備を行い、必要な資料とツールを確認した
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| デイリースタンドアップ | 30分 |      |
+| 広告クリエイティブ完成 | 1.5時間 |      |
+| クリエイティブレビュー会議 | 1.5時間 |      |
+| Cursor講座資料作成 | 3時間 |      |
+| セミナー会場報告 | 30分 |      |
+| 新規顧客商談準備 | 1.5時間 |      |
+| バグ報告確認 | 1時間 |      |
+| 月次レポート分析 | 1.5時間 |      |`,
+            '2025-11-07': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-07
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- Cursor講座の実施
+- 新規顧客商談の実施
+
+## 業務内容
+
+### 午前
+- 朝イチでチームのデイリースタンドアップに参加し、各メンバーの進捗状況を確認しながら今日のタスクを共有した。特に重要な案件について優先順位を話し合い、リソース配分を調整した
+- クライアント向けの提案スライドを1本作り込み、市場分析データと競合比較を追加して説得力のある内容に仕上げた。完成後、上司にレビュー依頼を送付し、フィードバック待ちの状態となった
+- Slackワークフローの通知設定を確認し、各チャンネルへの自動通知が正しく動作するかテストメッセージを送って動作確認を行った。一部の設定に不備があったため修正し、再テストを実施した
+- Cursor講座の当日資料を軽く仕上げて、ハンズオンの手順を整理した。参加者がスムーズに進められるよう、各ステップにスクリーンショットを追加し、よくある質問への回答も追記した
+
+### 午後
+- 新規顧客と30分商談を行い、プロジェクトの要件を詳しくヒアリングした。顧客の課題を深掘りし、具体的な解決策を提案。次回アクションとして、正式な見積もり書の提出と詳細仕様の確認ミーティングを確定した
+- 広告クリエイティブ案を3案作成し、それぞれ異なるアプローチで訴求ポイントを設定した。社内でABテスト案を相談し、どのクリエイティブを優先的にテストするか議論した結果、2案を選定した
+- 動画編集チームに改善点を伝え、納期を1週間延長した
+- メンバーから上がってきたバグ報告を1件対応し、ログイン機能の不具合を調査した。原因を特定し、簡単な修正を実装してステージング環境でテスト後、本番環境にデプロイした
+- セミナー開催の会場候補を2つ比較し、アクセスの良さ、設備の充実度、料金を総合的に検討した。見積もりをまとめて上司に提出し、最終決定に向けて候補を絞り込んだ
+- 終業前に翌日のスケジュール整理を行い、優先度の高いタスクをTodoリストに落とし込んだ。特に重要な会議の準備資料を確認し、必要な資料が揃っているかチェックした
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| デイリースタンドアップ | 30分 |      |
+| 提案スライド作成 | 2時間 |      |
+| Slackワークフロー確認 | 1時間 |      |
+| Cursor講座資料作成 | 1.5時間 |      |
+| 新規顧客商談 | 30分 |      |
+| 広告クリエイティブ作成 | 2時間 |      |
+| 動画編集チーム対応 | 30分 |      |
+| バグ対応・デプロイ | 1.5時間 |      |
+| 会場候補比較・見積もり | 1時間 |      |
+| スケジュール整理 | 30分 |      |`,
+            '2025-11-08': `# 日報
+
+## 基本情報
+- **日付**: 2025-11-08
+- **部署/氏名**: 
+- **勤務時間**: 開始時刻 ～ 終了時刻
+
+## 今日の目標
+- 週末の振り返りと来週の準備
+- 自己学習とスキルアップ
+
+## 業務内容
+
+### 午前
+- 週末の振り返りを行い、今週の業務を振り返って良かった点と改善点を整理した
+- 来週のスケジュールを確認し、重要な会議やタスクをカレンダーに登録した
+- 自己学習として、Cursorの新機能について調べ、実践的な使い方を試してみた
+- 来週の新規顧客商談に向けて、顧客情報を再確認し、質問事項をリストアップした
+
+### 午後
+- 見積もり書の作成を開始し、新規顧客への提案内容を整理した
+- 週次レポートの作成を行い、今週の成果と課題をまとめた
+- セミナー会場の最終決定に向けて、追加の情報収集を行った
+- 来週のタスクを優先順位付けし、Todoリストを更新した
+- 終業前に来週の準備として、必要な資料を確認し、会議のアジェンダを整理した
+
+## 作業時間（工数）
+| 作業内容 | 時間 | 備考 |
+|---------|------|------|
+| 週末振り返り | 1時間 |      |
+| 来週スケジュール確認 | 30分 |      |
+| 自己学習 | 1.5時間 |      |
+| 新規顧客商談準備 | 1時間 |      |
+| 見積もり書作成 | 2時間 |      |
+| 週次レポート作成 | 1.5時間 |      |
+| セミナー会場情報収集 | 1時間 |      |
+| 来週タスク整理 | 30分 |      |`
+        };
+
+        // 日報データを読み込む
+        function loadReports() {
+            const reports = [];
+            
+            for (const [date, content] of Object.entries(reportData)) {
+                const report = parseMarkdown(content);
+                if (report && report.date) {
+                    reports.push(report);
+                }
+            }
+            
+            dailyReports = reports.sort((a, b) => a.date.localeCompare(b.date));
+        }
+
+        // 統計情報を計算
+        function calculateStats() {
+            if (dailyReports.length === 0) {
+                return {
+                    totalDays: 0,
+                    totalTasks: 0,
+                    totalTime: 0,
+                    avgTime: 0,
+                    maxTime: 0
+                };
+            }
+
+            const totalTasks = dailyReports.reduce((sum, r) => sum + r.tasks.length, 0);
+            const totalTime = dailyReports.reduce((sum, r) => sum + r.totalTime, 0);
+            const avgTime = totalTime / dailyReports.length;
+            const maxTime = Math.max(...dailyReports.map(r => r.totalTime), 0);
+
+            return {
+                totalDays: dailyReports.length,
+                totalTasks: totalTasks,
+                totalTime: totalTime,
+                avgTime: avgTime,
+                maxTime: maxTime
+            };
+        }
+
+        // 統計カードを表示
+        function displayStats() {
+            const stats = calculateStats();
+            const statsGrid = document.getElementById('statsGrid');
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <h3>分析日数</h3>
+                    <div class="value">${stats.totalDays}</div>
+                    <div class="unit">日</div>
+                </div>
+                <div class="stat-card">
+                    <h3>総タスク数</h3>
+                    <div class="value">${stats.totalTasks}</div>
+                    <div class="unit">件</div>
+                </div>
+                <div class="stat-card">
+                    <h3>総作業時間</h3>
+                    <div class="value">${stats.totalTime.toFixed(1)}</div>
+                    <div class="unit">時間</div>
+                </div>
+                <div class="stat-card">
+                    <h3>平均作業時間</h3>
+                    <div class="value">${stats.avgTime.toFixed(1)}</div>
+                    <div class="unit">時間/日</div>
+                </div>
+            `;
+        }
+
+        // カテゴリを抽出（タスク名から）
+        function extractCategory(taskName) {
+            const categoryMap = {
+                'デイリースタンドアップ': '会議',
+                'スタンドアップ': '会議',
+                'ミーティング': '会議',
+                '会議': '会議',
+                '打ち合わせ': '会議',
+                'レビュー': 'レビュー',
+                '作成': '作成',
+                '準備': '準備',
+                '調査': '調査',
+                '分析': '分析',
+                '対応': '対応',
+                '修正': '修正',
+                'デプロイ': 'デプロイ',
+                '商談': '営業',
+                '提案': '営業',
+                '見積もり': '営業',
+                'レポート': 'レポート',
+                '資料': '資料',
+                'スライド': '資料',
+                '企画': '企画',
+                '講座': '教育',
+                '学習': '教育',
+                '整理': '管理',
+                '確認': '管理'
+            };
+
+            for (const [keyword, category] of Object.entries(categoryMap)) {
+                if (taskName.includes(keyword)) {
+                    return category;
+                }
+            }
+            return 'その他';
+        }
+
+        // 日別作業時間グラフ
+        function createDailyTimeChart() {
+            const ctx = document.getElementById('dailyTimeChart');
+            if (!ctx) return;
+
+            // 既存のチャートを破棄
+            if (dailyTimeChart) {
+                dailyTimeChart.destroy();
+            }
+            
+            const labels = dailyReports.map(r => {
+                const date = new Date(r.date + 'T00:00:00');
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            });
+            const data = dailyReports.map(r => r.totalTime);
+
+            dailyTimeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '作業時間（時間）',
+                        data: data,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '時間'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // カテゴリ別作業時間グラフ
+        function createCategoryChart() {
+            const ctx = document.getElementById('categoryChart');
+            if (!ctx) return;
+
+            // 既存のチャートを破棄
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+            
+            const categoryMap = {};
+            dailyReports.forEach(report => {
+                report.tasks.forEach(task => {
+                    const category = extractCategory(task.name);
+                    if (!categoryMap[category]) {
+                        categoryMap[category] = 0;
+                    }
+                    categoryMap[category] += task.time;
+                });
+            });
+
+            const categories = Object.keys(categoryMap).sort((a, b) => categoryMap[b] - categoryMap[a]);
+            const times = categories.map(cat => categoryMap[cat]);
+
+            // 色のパレット
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
+                '#a8edea', '#fed6e3', '#ffecd2', '#fcb69f'
+            ];
+
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: times,
+                        backgroundColor: colors.slice(0, categories.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value.toFixed(1)}時間 (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // タスク一覧を表示
+        function displayTaskList() {
+            const taskList = document.getElementById('taskList');
+            if (!taskList) return;
+
+            if (dailyReports.length === 0) {
+                taskList.innerHTML = '<p>タスクデータがありません。</p>';
+                return;
+            }
+
+            let html = '';
+
+            dailyReports.forEach(report => {
+                const date = new Date(report.date + 'T00:00:00');
+                const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+                
+                report.tasks.forEach(task => {
+                    html += `
+                        <div class="task-item">
+                            <div class="date">${dateStr}</div>
+                            <h4>${escapeHtml(task.name)}</h4>
+                            <div class="time">${task.time.toFixed(1)}時間</div>
+                            ${task.note ? `<div style="color: #666; margin-top: 5px; font-size: 0.9em;">${escapeHtml(task.note)}</div>` : ''}
+                        </div>
+                    `;
+                });
+            });
+
+            taskList.innerHTML = html || '<p>タスクデータがありません。</p>';
+        }
+
+        // 目標一覧を表示
+        function displayGoals() {
+            const goalsList = document.getElementById('goalsList');
+            if (!goalsList) return;
+
+            if (dailyReports.length === 0) {
+                goalsList.innerHTML = '<p>目標データがありません。</p>';
+                return;
+            }
+
+            let html = '';
+
+            dailyReports.forEach(report => {
+                if (report.goals && report.goals.length > 0) {
+                    const date = new Date(report.date + 'T00:00:00');
+                    const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+                    
+                    html += `
+                        <div class="goal-card">
+                            <div class="date">${dateStr}</div>
+                            <ul>
+                                ${report.goals.map(goal => `<li>${escapeHtml(goal)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            });
+
+            goalsList.innerHTML = html || '<p>目標データがありません。</p>';
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初期化
+        function init() {
+            try {
+                loadReports();
+                
+                if (dailyReports.length === 0) {
+                    document.getElementById('loading').style.display = 'none';
+                    const errorDiv = document.getElementById('error');
+                    errorDiv.style.display = 'block';
+                    errorDiv.innerHTML = '<div class="error">日報データが見つかりませんでした。</div>';
+                    return;
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+                displayStats();
+                createDailyTimeChart();
+                createCategoryChart();
+                displayTaskList();
+                displayGoals();
+            } catch (error) {
+                console.error('Error initializing:', error);
+                document.getElementById('loading').style.display = 'none';
+                const errorDiv = document.getElementById('error');
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `<div class="error">エラーが発生しました: ${error.message}<br>ブラウザのコンソールを確認してください。</div>`;
+            }
+        }
+
+        // ページ読み込み時に実行
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
