@@ -1,0 +1,12 @@
+# GitHub Pages用の設定ファイル（Jekyll）
+theme: jekyll-theme-minimal
+title: 日報・週報生成システム
+description: Cursor講座で作成した日報・週報の自動生成システム
+
+# 除外するファイル
+exclude:
+  - .gitignore
+  - calculate_dates.py
+  - fix_dates.py
+  - README.md
+

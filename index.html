@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日報・週報生成システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px;
+        }
+        h1 {
+            color: #667eea;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 1.3em;
+            margin-bottom: 50px;
+        }
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .link-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-decoration: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        .link-card h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        .link-card p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .section {
+            margin-top: 50px;
+        }
+        .section h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+        .file-list li {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .file-list a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .file-list a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 日報・週報生成システム</h1>
+        <p class="subtitle">Cursor講座で作成した日報・週報の自動生成システム</p>
+
+        <div class="links">
+            <a href="output/task_analysis.html" class="link-card">
+                <h2>📈 タスク分析</h2>
+                <p>作業時間とタスクの可視化</p>
+            </a>
+            <a href="output/プロジェクト説明資料.md" class="link-card">
+                <h2>📄 プロジェクト説明資料</h2>
+                <p>Marp形式のプレゼンテーション資料</p>
+            </a>
+        </div>
+
+        <div class="section">
+            <h2>📋 日報・週報ファイル</h2>
+            <ul class="file-list">
+                <li><a href="output/2025-11-03_週報.md">週報（2025-11-03）</a></li>
+                <li><a href="output/2025-11-08_日報.md">日報（2025-11-08）</a></li>
+                <li><a href="output/2025-11-07_日報.md">日報（2025-11-07）</a></li>
+                <li><a href="output/2025-11-06_日報.md">日報（2025-11-06）</a></li>
+                <li><a href="output/2025-11-05_日報.md">日報（2025-11-05）</a></li>
+                <li><a href="output/2025-11-04_日報.md">日報（2025-11-04）</a></li>
+                <li><a href="output/2025-11-03_日報.md">日報（2025-11-03）</a></li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>🔧 プロジェクト情報</h2>
+            <p>このプロジェクトは、Cursor講座で作成した日報・週報の自動生成システムです。</p>
+            <p>詳細は<a href="README.md">README.md</a>を参照してください。</p>
+        </div>
+    </div>
+</body>
+</html>
+
